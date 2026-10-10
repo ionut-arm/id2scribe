@@ -37,21 +37,25 @@ impl Sanitizer {
         document = Self::protect_rfcmarkup_pre(&document);
 
         // 3. Inject base tag if canonical URL is provided and not already present
-        if let Some(ref url) = options.canonical_url {
-            if !document.contains("<base ") && !document.contains("<base>") {
-                let base_tag = format!("<base href=\"{}\">\n", url);
-                if let Some(pos) = document.find("<head>") {
-                    document.insert_str(pos + 6, &format!("\n{}", base_tag));
-                } else if let Some(pos) = document.find("<head ") {
-                    if let Some(end) = document[pos..].find('>') {
-                        document.insert_str(pos + end + 1, &format!("\n{}", base_tag));
-                    }
-                }
+        if let Some(ref url) = options.canonical_url
+            && !document.contains("<base ")
+            && !document.contains("<base>")
+        {
+            let base_tag = format!("<base href=\"{}\">\n", url);
+            if let Some(pos) = document.find("<head>") {
+                document.insert_str(pos + 6, &format!("\n{}", base_tag));
+            } else if let Some(pos) = document.find("<head ")
+                && let Some(end) = document[pos..].find('>')
+            {
+                document.insert_str(pos + end + 1, &format!("\n{}", base_tag));
             }
         }
 
         // 4. Inject styles into <head> or prepend to document
-        let style_tag = format!("\n<style id=\"id2scribe-styles\">\n{}\n</style>\n", generated_css);
+        let style_tag = format!(
+            "\n<style id=\"id2scribe-styles\">\n{}\n</style>\n",
+            generated_css
+        );
 
         if let Some(pos) = document.find("</head>") {
             document.insert_str(pos, &style_tag);
@@ -154,7 +158,13 @@ table, figure, .artwork {{
             let after_tag = start_idx + open_pattern.len();
             if after_tag < remainder.len() {
                 let next_char = remainder.as_bytes()[after_tag];
-                if next_char != b' ' && next_char != b'\t' && next_char != b'\n' && next_char != b'\r' && next_char != b'>' && next_char != b'/' {
+                if next_char != b' '
+                    && next_char != b'\t'
+                    && next_char != b'\n'
+                    && next_char != b'\r'
+                    && next_char != b'>'
+                    && next_char != b'/'
+                {
                     result.push_str(&remainder[..after_tag]);
                     remainder = &remainder[after_tag..];
                     continue;
@@ -252,7 +262,8 @@ mod tests {
 
     #[test]
     fn test_existing_base_preserved() {
-        let html = r#"<html><head><base href="https://original.example.com/"></head><body></body></html>"#;
+        let html =
+            r#"<html><head><base href="https://original.example.com/"></head><body></body></html>"#;
         let opts = SanitizerOptions {
             canonical_url: Some("https://new.example.com/".to_string()),
             ..Default::default()

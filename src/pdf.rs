@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use headless_chrome::types::PrintToPdfOptions;
 use headless_chrome::{Browser, LaunchOptionsBuilder};
 use std::path::{Path, PathBuf};
@@ -152,12 +152,11 @@ impl PdfRenderer {
             .context("Failed to generate PDF from headless tab")?;
 
         // Ensure parent output directory exists
-        if let Some(parent) = output_path.parent() {
-            if !parent.as_os_str().is_empty() {
-                std::fs::create_dir_all(parent).with_context(|| {
-                    format!("Failed to create destination directory: {:?}", parent)
-                })?;
-            }
+        if let Some(parent) = output_path.parent()
+            && !parent.as_os_str().is_empty()
+        {
+            std::fs::create_dir_all(parent)
+                .with_context(|| format!("Failed to create destination directory: {:?}", parent))?;
         }
 
         std::fs::write(output_path, pdf_bytes)
@@ -174,7 +173,11 @@ mod tests {
     #[test]
     fn test_detect_browser() {
         if let Some(path) = PdfRenderer::detect_browser() {
-            assert!(path.exists(), "Detected browser path must exist: {:?}", path);
+            assert!(
+                path.exists(),
+                "Detected browser path must exist: {:?}",
+                path
+            );
         }
     }
 

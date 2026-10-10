@@ -72,7 +72,10 @@ fn test_cli_convert_local_html_end_to_end() {
         .status()
         .expect("Failed to execute id2scribe");
 
-    assert!(status.success(), "id2scribe execution must succeed on local HTML");
+    assert!(
+        status.success(),
+        "id2scribe execution must succeed on local HTML"
+    );
     assert!(output_pdf_path.exists(), "Output PDF must exist");
 
     let pdf_bytes = std::fs::read(&output_pdf_path).expect("Failed to read output PDF");

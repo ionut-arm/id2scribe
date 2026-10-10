@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use reqwest::Client;
 use serde::Deserialize;
 use std::path::Path;
@@ -92,7 +92,7 @@ impl Resolver {
             .trim_end_matches('/');
 
         // Get last path segment
-        let segment = clean.split('/').last().unwrap_or(clean);
+        let segment = clean.split('/').next_back().unwrap_or(clean);
 
         // Strip file extensions like .html, .txt, .pdf, .xml
         let without_ext = if let Some(stripped) = segment.strip_suffix(".html") {
@@ -129,10 +129,10 @@ impl Resolver {
 
         match self.client.get(&api_url).send().await {
             Ok(resp) if resp.status().is_success() => {
-                if let Ok(doc) = resp.json::<DatatrackerDocResponse>().await {
-                    if let (Some(name), Some(rev)) = (doc.name, doc.rev) {
-                        return Ok(format!("{}-{}", name, rev));
-                    }
+                if let Ok(doc) = resp.json::<DatatrackerDocResponse>().await
+                    && let (Some(name), Some(rev)) = (doc.name, doc.rev)
+                {
+                    return Ok(format!("{}-{}", name, rev));
                 }
             }
             _ => {}
@@ -149,10 +149,10 @@ impl Resolver {
             }
 
             // Fallback: scrape HTML for draft name
-            if let Ok(text) = resp.text().await {
-                if let Some(rev) = Self::scrape_draft_version(&text, draft_name) {
-                    return Ok(rev);
-                }
+            if let Ok(text) = resp.text().await
+                && let Some(rev) = Self::scrape_draft_version(&text, draft_name)
+            {
+                return Ok(rev);
             }
         }
 
@@ -194,14 +194,12 @@ impl Resolver {
     async fn fetch_canonical_html(&self, draft_id: &str) -> Result<(String, String)> {
         // 1. Try canonical archive URL: https://www.ietf.org/archive/id/<draft-id>.html
         let archive_url = format!("https://www.ietf.org/archive/id/{}.html", draft_id);
-        if let Ok(resp) = self.client.get(&archive_url).send().await {
-            if resp.status().is_success() {
-                if let Ok(text) = resp.text().await {
-                    if !text.trim().is_empty() {
-                        return Ok((text, archive_url));
-                    }
-                }
-            }
+        if let Ok(resp) = self.client.get(&archive_url).send().await
+            && resp.status().is_success()
+            && let Ok(text) = resp.text().await
+            && !text.trim().is_empty()
+        {
+            return Ok((text, archive_url));
         }
 
         // 2. Fallback to datatracker HTML: https://datatracker.ietf.org/doc/html/<draft-id>
@@ -245,19 +243,27 @@ mod tests {
             "draft-ietf-rats-architecture-22"
         );
         assert_eq!(
-            Resolver::extract_draft_id("https://datatracker.ietf.org/doc/draft-ietf-rats-architecture/"),
+            Resolver::extract_draft_id(
+                "https://datatracker.ietf.org/doc/draft-ietf-rats-architecture/"
+            ),
             "draft-ietf-rats-architecture"
         );
         assert_eq!(
-            Resolver::extract_draft_id("https://datatracker.ietf.org/doc/html/draft-ietf-rats-architecture-22"),
+            Resolver::extract_draft_id(
+                "https://datatracker.ietf.org/doc/html/draft-ietf-rats-architecture-22"
+            ),
             "draft-ietf-rats-architecture-22"
         );
         assert_eq!(
-            Resolver::extract_draft_id("https://www.ietf.org/archive/id/draft-ietf-rats-architecture-22.html"),
+            Resolver::extract_draft_id(
+                "https://www.ietf.org/archive/id/draft-ietf-rats-architecture-22.html"
+            ),
             "draft-ietf-rats-architecture-22"
         );
         assert_eq!(
-            Resolver::extract_draft_id("https://www.ietf.org/archive/id/draft-ietf-rats-architecture-22.txt"),
+            Resolver::extract_draft_id(
+                "https://www.ietf.org/archive/id/draft-ietf-rats-architecture-22.txt"
+            ),
             "draft-ietf-rats-architecture-22"
         );
     }
@@ -274,11 +280,15 @@ mod tests {
     #[test]
     fn test_extract_draft_id_with_query_and_fragment() {
         assert_eq!(
-            Resolver::extract_draft_id("https://datatracker.ietf.org/doc/html/draft-ietf-rats-architecture-22?include_text=1#section-3"),
+            Resolver::extract_draft_id(
+                "https://datatracker.ietf.org/doc/html/draft-ietf-rats-architecture-22?include_text=1#section-3"
+            ),
             "draft-ietf-rats-architecture-22"
         );
         assert_eq!(
-            Resolver::extract_draft_id("https://datatracker.ietf.org/doc/draft-ietf-rats-architecture-22/?raw=1"),
+            Resolver::extract_draft_id(
+                "https://datatracker.ietf.org/doc/draft-ietf-rats-architecture-22/?raw=1"
+            ),
             "draft-ietf-rats-architecture-22"
         );
     }
@@ -308,7 +318,9 @@ mod tests {
     async fn test_resolve_local_file() {
         let temp_dir = tempfile::tempdir().unwrap();
         let file_path = temp_dir.path().join("draft-local-test-01.html");
-        tokio::fs::write(&file_path, "<h1>Local Draft</h1>").await.unwrap();
+        tokio::fs::write(&file_path, "<h1>Local Draft</h1>")
+            .await
+            .unwrap();
 
         let resolver = Resolver::new().unwrap();
         let resolved = resolver
