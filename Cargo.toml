@@ -5,6 +5,9 @@ edition = "2024"
 license = "MIT OR Apache-2.0"
 description = "IETF Internet-Draft to Kindle Scribe PDF Converter with wide stylus margins"
 readme = "README.md"
+repository = "https://github.com/ionut-arm/id2scribe"
+homepage = "https://github.com/ionut-arm/id2scribe"
+authors = ["Ionut Mihalcea"]
 keywords = ["ietf", "kindle", "scribe", "pdf", "rfc"]
 categories = ["command-line-utilities"]
 

@@ -43,7 +43,7 @@
 ### Building from Source
 
 ```bash
-git clone https://github.com/your-username/id2scribe.git
+git clone https://github.com/ionut-arm/id2scribe.git
 cd id2scribe
 cargo build --release
 ```
