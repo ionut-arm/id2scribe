@@ -166,3 +166,34 @@ impl PdfRenderer {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_detect_browser() {
+        if let Some(path) = PdfRenderer::detect_browser() {
+            assert!(path.exists(), "Detected browser path must exist: {:?}", path);
+        }
+    }
+
+    #[test]
+    fn test_detect_browser_env_override() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let fake_chrome = temp_dir.path().join("fake-chrome-bin");
+        std::fs::write(&fake_chrome, "").unwrap();
+
+        // Safety: tests run serially or with unique env var per test if possible,
+        // but testing that an existing file is honored by detect_browser
+        unsafe {
+            std::env::set_var("CHROME", &fake_chrome);
+        }
+        let detected = PdfRenderer::detect_browser();
+        unsafe {
+            std::env::remove_var("CHROME");
+        }
+
+        assert_eq!(detected, Some(fake_chrome));
+    }
+}

@@ -270,4 +270,54 @@ mod tests {
         assert!(!Resolver::is_versioned("draft-ietf-rats-architecture-"));
         assert!(!Resolver::is_versioned("draft-ietf-rats-architecture-222"));
     }
+
+    #[test]
+    fn test_extract_draft_id_with_query_and_fragment() {
+        assert_eq!(
+            Resolver::extract_draft_id("https://datatracker.ietf.org/doc/html/draft-ietf-rats-architecture-22?include_text=1#section-3"),
+            "draft-ietf-rats-architecture-22"
+        );
+        assert_eq!(
+            Resolver::extract_draft_id("https://datatracker.ietf.org/doc/draft-ietf-rats-architecture-22/?raw=1"),
+            "draft-ietf-rats-architecture-22"
+        );
+    }
+
+    #[test]
+    fn test_scrape_draft_version() {
+        let html_meta = r#"<html><head><meta name="ietf.draft" content="draft-ietf-rats-architecture-22"></head></html>"#;
+        assert_eq!(
+            Resolver::scrape_draft_version(html_meta, "draft-ietf-rats-architecture"),
+            Some("draft-ietf-rats-architecture-22".to_string())
+        );
+
+        let html_text = r#"<title>draft-ietf-quic-transport-34</title>"#;
+        assert_eq!(
+            Resolver::scrape_draft_version(html_text, "draft-ietf-quic-transport"),
+            Some("draft-ietf-quic-transport-34".to_string())
+        );
+
+        let html_none = r#"<html><body>No version here</body></html>"#;
+        assert_eq!(
+            Resolver::scrape_draft_version(html_none, "draft-ietf-rats-architecture"),
+            None
+        );
+    }
+
+    #[tokio::test]
+    async fn test_resolve_local_file() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let file_path = temp_dir.path().join("draft-local-test-01.html");
+        tokio::fs::write(&file_path, "<h1>Local Draft</h1>").await.unwrap();
+
+        let resolver = Resolver::new().unwrap();
+        let resolved = resolver
+            .resolve_and_fetch(file_path.to_str().unwrap())
+            .await
+            .unwrap();
+
+        assert_eq!(resolved.draft_name, "draft-local-test-01");
+        assert!(resolved.html.contains("<h1>Local Draft</h1>"));
+        assert!(resolved.canonical_url.starts_with("file://"));
+    }
 }

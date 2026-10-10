@@ -225,4 +225,48 @@ mod tests {
         assert!(output.contains("margin-right: 40mm;"));
         assert!(output.contains("<base href=\"https://example.com/draft.html\">"));
     }
+
+    #[test]
+    fn test_protect_rfcmarkup_pre() {
+        let html = r#"<div class="rfcmarkup"><pre>RFC Packet Diagram</pre></div>"#;
+        let protected = Sanitizer::protect_rfcmarkup_pre(html);
+        assert!(protected.contains(r#"class="rfc-body-wrapper""#));
+        assert!(!protected.contains(r#"class="rfcmarkup""#));
+    }
+
+    #[test]
+    fn test_svg_scaling_in_css() {
+        let css = Sanitizer::build_css(38.0, 9.5, 6.8);
+        assert!(css.contains("svg, .artwork svg, figure svg"));
+        assert!(css.contains("max-width: 100% !important;"));
+    }
+
+    #[test]
+    fn test_fallback_injection_without_head() {
+        let html = "<div><p>Fragment without head tag</p></div>";
+        let opts = SanitizerOptions::default();
+        let output = Sanitizer::sanitize_and_inject(html, &opts);
+        assert!(output.contains("<style id=\"id2scribe-styles\">"));
+        assert!(output.contains("Fragment without head tag"));
+    }
+
+    #[test]
+    fn test_existing_base_preserved() {
+        let html = r#"<html><head><base href="https://original.example.com/"></head><body></body></html>"#;
+        let opts = SanitizerOptions {
+            canonical_url: Some("https://new.example.com/".to_string()),
+            ..Default::default()
+        };
+        let output = Sanitizer::sanitize_and_inject(html, &opts);
+        assert!(output.contains("https://original.example.com/"));
+        assert!(!output.contains("https://new.example.com/"));
+    }
+
+    #[test]
+    fn test_case_insensitive_script_stripping() {
+        let html = "<html><HEAD><SCRIPT type='text/javascript'>console.log(1);</SCRIPT></HEAD><body>Content</body></html>";
+        let cleaned = Sanitizer::strip_tags(html, "script");
+        assert!(!cleaned.contains("console.log"));
+        assert!(cleaned.contains("Content"));
+    }
 }

@@ -26,3 +26,48 @@ pub struct Cli {
     #[arg(long = "font-size", default_value_t = 9.5, value_name = "PT")]
     pub font_size: f32,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_cli_defaults() {
+        let args = Cli::try_parse_from(["id2scribe", "draft-ietf-rats-architecture"]).unwrap();
+        assert_eq!(args.draft, "draft-ietf-rats-architecture");
+        assert_eq!(args.output, None);
+        assert_eq!(args.margin_right, 38.0);
+        assert_eq!(args.font_size, 9.5);
+    }
+
+    #[test]
+    fn test_cli_custom_flags() {
+        let args = Cli::try_parse_from([
+            "id2scribe",
+            "draft-ietf-quic-transport-34",
+            "-o",
+            "custom.pdf",
+            "--margin-right",
+            "45.5",
+            "--font-size",
+            "10.0",
+        ])
+        .unwrap();
+        assert_eq!(args.draft, "draft-ietf-quic-transport-34");
+        assert_eq!(args.output, Some(PathBuf::from("custom.pdf")));
+        assert_eq!(args.margin_right, 45.5);
+        assert_eq!(args.font_size, 10.0);
+    }
+
+    #[test]
+    fn test_cli_missing_draft_error() {
+        let err = Cli::try_parse_from(["id2scribe"]);
+        assert!(err.is_err());
+    }
+
+    #[test]
+    fn test_cli_invalid_float_error() {
+        let err = Cli::try_parse_from(["id2scribe", "draft-foo", "--margin-right", "not-a-number"]);
+        assert!(err.is_err());
+    }
+}
